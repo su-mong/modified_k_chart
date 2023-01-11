@@ -88,6 +88,7 @@ class KChartWidget extends StatefulWidget {
   final bool materialInfoDialog; // Material风格的信息弹窗
   final Widget Function(KLineEntity entity, ChartTranslations translations)? customInfoDialog; /// custom InfoDialog Widget
   final InfoDialogPosition infoDialogPosition; /// the position and alignment of InfoDialog
+  final double? infoDialogWidth; /// width of InfoDialog
   final Map<String, ChartTranslations> translations;
   final String? language; /// Select Default Language. If [language] is null, it will use default language settings in device.
   final List<String> timeFormat;
@@ -129,6 +130,7 @@ class KChartWidget extends StatefulWidget {
         this.materialInfoDialog = true,
         this.customInfoDialog,
         this.infoDialogPosition = const InfoDialogPosition(),
+        this.infoDialogWidth,
         this.translations = kChartTranslations,
         this.language,
         this.timeFormat = TimeFormat.YEAR_MONTH_DAY,
@@ -437,7 +439,7 @@ class _KChartWidgetState extends State<KChartWidget>
           ];
 
           final dialogPadding = 4.0;
-          final dialogWidth = mWidth / 3;
+          final dialogWidth = widget.infoDialogWidth ?? mWidth / 3;
 
           /// calculate margin by [widget.infoDialogPosition]
           late final EdgeInsets margin;
@@ -508,7 +510,7 @@ class _KChartWidgetState extends State<KChartWidget>
     return StreamBuilder<InfoWindowEntity?>(
         stream: mInfoWindowStream?.stream,
         builder: (context, snapshot) {
-          final dialogWidth = mWidth / 3;
+          final dialogWidth = widget.infoDialogWidth ?? mWidth / 3;
 
           if ((!isLongPress && !isOnTap) ||
               widget.isLine == true ||
