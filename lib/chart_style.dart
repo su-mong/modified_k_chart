@@ -12,6 +12,9 @@ class ChartColors {
   Color upColor = Color(0xff4DAA90);
   Color dnColor = Color(0xffC15466);
   Color volColor = Color(0xff4729AE);
+  // added by sumong : color of bar in volume chart.
+  // (if volBarColor is null, color of bar in volume chart will be upColor when data is up, or dnColor when data is down.)
+  Color? volBarColor;
 
   Color macdColor = Color(0xff4729AE);
   Color difColor = Color(0xffC9B885);
@@ -107,6 +110,21 @@ class ChartStyle {
 
   int gridColumns = 4;
 
+  // added by sumong : radius for real body of main chart.
+  // (cf. real body is rectangle from open to close.)
+  double candleBodyRadius = 0;
+  // added by sumong : radius for upper wick & lower wick of main chart.
+  // (cf. upper wick is line from close(or open) to high. lower wick is line from open(or close) to low. so, candleWickRadius is radius of line in candle.)
+  double candleWickRadius = 0;
+  // added by sumong : radius for bar in volume chart.
+  double volRadius = 0;
+
   //下方時間客製化
   List<String>? dateTimeFormat;
+
+  // A function to select whether or not to display the current price of the selected bar, displayed at the end of the horizontal axis
+  bool showSelectedBarCurrentPrice = true;
+
+  // A function to select whether or not to display the date of the selected bar, displayed at the bottom of the vertical axis
+  bool showSelectedBarDate = true;
 }

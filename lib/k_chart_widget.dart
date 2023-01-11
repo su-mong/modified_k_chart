@@ -7,7 +7,33 @@ import 'package:k_chart/flutter_k_chart.dart';
 
 enum MainState { MA, BOLL, NONE }
 
+// Volume Chart Type.
+//    - ALL : showing Volume Chart + MA5 Line Chart + MA10 Line Chart
+//    - MA5 : showing Volume Chart + MA5 Line Chart
+//    - MA10 : showing Volume Chart + MA10 Line Chart
+//    - NONE : showing Volume Chart only
+enum VolState { ALL, MA5, MA10, NONE }
+
 enum SecondaryState { MACD, KDJ, RSI, WR, CCI, NONE }
+
+// InfoDialog Alignment Type.
+//    - Left : Show InfoDialog in the upper left corner of Main Chart.
+//    - Right : Show InfoDialog in the upper right corner of Main Chart.
+//    - BothSide : default. Depending on the location of the selected bar, display InfoDialog in the upper left corner or upper right corner of Main Chart.
+//    - BesideVerticalLine : Depending on the location of the selected bar, InfoDialog is displayed in the upper left or upper right of the selected bar.
+//    TODO - LeftTop : Show InfoDialog in the upper left corner of Main Chart.
+//    TODO - LeftCenter : Show InfoDialog in the center left corner of Main Chart.
+//    TODO - LeftBottom : Show InfoDialog in the lower left corner of Main Chart.
+//    TODO - RightTop : Show InfoDialog in the upper right corner of Main Chart.
+//    TODO - RightCenter : Show InfoDialog in the center right corner of Main Chart.
+//    TODO - RightBottom : Show InfoDialog in the lower right corner of Main Chart.
+//    TODO - BothSideTop : Depending on the location of the selected bar, display InfoDialog in the upper left corner or upper right corner of Main Chart.
+//    TODO - BothSideCenter : Depending on the location of the selected bar, display InfoDialog in the center left corner or center right corner of Main Chart.
+//    TODO - BothSideBottom : Depending on the location of the selected bar, display InfoDialog in the lower left corner or lower right corner of Main Chart.
+//    TODO - BesideVerticalLineTop : Depending on the location of the selected bar, InfoDialog is displayed in the upper left or upper right of the selected bar.
+//    TODO - BesideVerticalLineCenter : Depending on the location of the selected bar, InfoDialog is displayed in the center left or center right of the selected bar.
+//    TODO - BesideVerticalLineBottom : Depending on the location of the selected bar, InfoDialog is displayed in the lower left or lower right of the selected bar.
+enum InfoDialogAlignment { Left, Right, BothSide, BesideVerticalLine }
 
 class TimeFormat {
   static const List<String> YEAR_MONTH_DAY = [yyyy, '-', mm, '-', dd];
@@ -24,10 +50,31 @@ class TimeFormat {
   ];
 }
 
+// This is used to determine the location of InfoDialog.
+class InfoDialogPosition {
+  // alignment of InfoDialog
+  final InfoDialogAlignment alignment;
+  // Gap from side above Main Chart to side above InfoDialog or side below Main Chart to side below InfoDialog
+  final double vertical;
+  // Gap from `the left side` to the left side of InfoDialog or `the right side` to the right side of InfoDialog.
+  //    In this case, `the left side`/`the right side` depends on the alignment param.
+  //    - If alignment is starts with 'BesideVerticalLine', `the left side`/`the right side` means left/right side of the vertical line that displays the selected bar.
+  //    - Else, `the left side`/`the right side` means far left/right side of Main Chart.
+  final double horizontal;
+
+  const InfoDialogPosition({
+    this.alignment = InfoDialogAlignment.BothSide,
+    this.vertical = 25,
+    this.horizontal = 4,
+  });
+}
+
 class KChartWidget extends StatefulWidget {
   final List<KLineEntity>? datas;
   final MainState mainState;
+  final VolState volState;
   final bool volHidden;
+  final bool volTextHidden; /// whether to hide the text(`VOL:~~~  MA5:~~~  MA10:~~~`) in Volume Chart
   final SecondaryState secondaryState;
   final Function()? onSecondaryTap;
   final bool isLine;
@@ -36,9 +83,13 @@ class KChartWidget extends StatefulWidget {
   @Deprecated('Use `translations` instead.')
   final bool isChinese;
   final bool showNowPrice;
+  final bool dateTextHidden; /// whether to hide date text below chart
   final bool showInfoDialog;
   final bool materialInfoDialog; // Material风格的信息弹窗
+  final Widget Function(KLineEntity entity, ChartTranslations translations)? customInfoDialog; /// custom InfoDialog Widget
+  final InfoDialogPosition infoDialogPosition; /// the position and alignment of InfoDialog
   final Map<String, ChartTranslations> translations;
+  final String? language; /// Select Default Language. If [language] is null, it will use default language settings in device.
   final List<String> timeFormat;
 
   //当屏幕滚动到尽头会调用，真为拉到屏幕右侧尽头，假为拉到屏幕左侧尽头
@@ -57,33 +108,39 @@ class KChartWidget extends StatefulWidget {
   final double xFrontPadding;
 
   KChartWidget(
-    this.datas,
-    this.chartStyle,
-    this.chartColors, {
-    required this.isTrendLine,
-    this.xFrontPadding = 100,
-    this.mainState = MainState.MA,
-    this.secondaryState = SecondaryState.MACD,
-    this.onSecondaryTap,
-    this.volHidden = false,
-    this.isLine = false,
-    this.isTapShowInfoDialog = false,
-    this.hideGrid = false,
-    @Deprecated('Use `translations` instead.') this.isChinese = false,
-    this.showNowPrice = true,
-    this.showInfoDialog = true,
-    this.materialInfoDialog = true,
-    this.translations = kChartTranslations,
-    this.timeFormat = TimeFormat.YEAR_MONTH_DAY,
-    this.onLoadMore,
-    this.fixedLength = 2,
-    this.maDayList = const [5, 10, 20],
-    this.flingTime = 600,
-    this.flingRatio = 0.5,
-    this.flingCurve = Curves.decelerate,
-    this.isOnDrag,
-    this.verticalTextAlignment = VerticalTextAlignment.left,
-  });
+      this.datas,
+      this.chartStyle,
+      this.chartColors, {
+        required this.isTrendLine,
+        this.xFrontPadding = 100,
+        this.mainState = MainState.MA,
+        this.secondaryState = SecondaryState.MACD,
+        this.onSecondaryTap,
+        this.volState = VolState.ALL,
+        this.volHidden = false,
+        this.volTextHidden = false,
+        this.isLine = false,
+        this.isTapShowInfoDialog = false,
+        this.hideGrid = false,
+        @Deprecated('Use `translations` instead.') this.isChinese = false,
+        this.showNowPrice = true,
+        this.dateTextHidden = false,
+        this.showInfoDialog = true,
+        this.materialInfoDialog = true,
+        this.customInfoDialog,
+        this.infoDialogPosition = const InfoDialogPosition(),
+        this.translations = kChartTranslations,
+        this.language,
+        this.timeFormat = TimeFormat.YEAR_MONTH_DAY,
+        this.onLoadMore,
+        this.fixedLength = 2,
+        this.maDayList = const [5, 10, 20],
+        this.flingTime = 600,
+        this.flingRatio = 0.5,
+        this.flingCurve = Curves.decelerate,
+        this.isOnDrag,
+        this.verticalTextAlignment = VerticalTextAlignment.left,
+      });
 
   @override
   _KChartWidgetState createState() => _KChartWidgetState();
@@ -151,6 +208,10 @@ class _KChartWidgetState extends State<KChartWidget>
       isOnTap: isOnTap,
       isTapShowInfoDialog: widget.isTapShowInfoDialog,
       mainState: widget.mainState,
+      /// changed by sumong : add [widget.volState]
+      volState: widget.volState,
+      volTextHidden: widget.volTextHidden,
+      dateTextHidden: widget.dateTextHidden,
       volHidden: widget.volHidden,
       secondaryState: widget.secondaryState,
       isLine: widget.isLine,
@@ -235,7 +296,7 @@ class _KChartWidgetState extends State<KChartWidget>
             isOnTap = false;
             isLongPress = true;
             if ((mSelectX != details.localPosition.dx ||
-                    mSelectY != details.globalPosition.dy) &&
+                mSelectY != details.globalPosition.dy) &&
                 !widget.isTrendLine) {
               mSelectX = details.localPosition.dx;
               notifyChanged();
@@ -255,7 +316,7 @@ class _KChartWidgetState extends State<KChartWidget>
           },
           onLongPressMoveUpdate: (details) {
             if ((mSelectX != details.localPosition.dx ||
-                    mSelectY != details.globalPosition.dy) &&
+                mSelectY != details.globalPosition.dy) &&
                 !widget.isTrendLine) {
               mSelectX = details.localPosition.dx;
               mSelectY = details.localPosition.dy;
@@ -283,7 +344,13 @@ class _KChartWidgetState extends State<KChartWidget>
                 size: Size(double.infinity, double.infinity),
                 painter: _painter,
               ),
-              if (widget.showInfoDialog) _buildInfoDialog()
+
+              /// if [widget.customInfoDialog] is not null and [widget.showInfoDialog] is true,  build custom InfoDialog
+              if (widget.customInfoDialog != null && widget.showInfoDialog)
+                _buildCustomInfoDialog(widget.customInfoDialog!)
+              /// if [widget.customInfoDialog] is null and [widget.showInfoDialog] is true, build normal InfoDialog
+              else if (widget.showInfoDialog)
+                _buildInfoDialog()
             ],
           ),
         );
@@ -314,7 +381,7 @@ class _KChartWidgetState extends State<KChartWidget>
     aniX = null;
     aniX = Tween<double>(begin: mScrollX, end: x * widget.flingRatio + mScrollX)
         .animate(CurvedAnimation(
-            parent: _controller!.view, curve: widget.flingCurve));
+        parent: _controller!.view, curve: widget.flingCurve));
     aniX!.addListener(() {
       mScrollX = aniX!.value;
       if (mScrollX <= 0) {
@@ -368,14 +435,43 @@ class _KChartWidgetState extends State<KChartWidget>
             "${upDownPercent > 0 ? "+" : ''}${upDownPercent.toStringAsFixed(2)}%",
             if (entityAmount != null) entityAmount.toInt().toString()
           ];
+
           final dialogPadding = 4.0;
           final dialogWidth = mWidth / 3;
-          return Container(
-            margin: EdgeInsets.only(
+
+          /// calculate margin by [widget.infoDialogPosition]
+          late final EdgeInsets margin;
+          switch(widget.infoDialogPosition.alignment) {
+            case InfoDialogAlignment.Left:
+              margin = EdgeInsets.only(
+                left: widget.infoDialogPosition.horizontal,
+                top: widget.infoDialogPosition.vertical,
+              );
+              break;
+            case InfoDialogAlignment.Right:
+              margin = EdgeInsets.only(
+                left: mWidth - dialogWidth - widget.infoDialogPosition.horizontal,
+                top: widget.infoDialogPosition.vertical,
+              );
+              break;
+            case InfoDialogAlignment.BothSide:
+              margin = EdgeInsets.only(
+                left: snapshot.data!.isLeft ? widget.infoDialogPosition.horizontal : mWidth - dialogWidth - widget.infoDialogPosition.horizontal,
+                top: widget.infoDialogPosition.vertical,
+              );
+              break;
+            case InfoDialogAlignment.BesideVerticalLine:
+              margin = EdgeInsets.only(
                 left: snapshot.data!.isLeft
-                    ? dialogPadding
-                    : mWidth - dialogWidth - dialogPadding,
-                top: 25),
+                    ? mSelectX - dialogWidth - widget.chartStyle.vCrossWidth - widget.infoDialogPosition.horizontal
+                    : mSelectX + widget.chartStyle.vCrossWidth + widget.infoDialogPosition.horizontal,
+                top: widget.infoDialogPosition.vertical,
+              );
+              break;
+          }
+
+          return Container(
+            margin: margin,
             width: dialogWidth,
             decoration: BoxDecoration(
                 color: widget.chartColors.selectFillColor,
@@ -387,8 +483,14 @@ class _KChartWidgetState extends State<KChartWidget>
               itemExtent: 14.0,
               shrinkWrap: true,
               itemBuilder: (context, index) {
+                /// if user sets [language] parameter, then [translations] must have key named [language].
+                assert((widget.language == null) ? true : widget.translations.containsKey(widget.language!));
+
+                /// changed by sumong : add option about [widget.language]
                 final translations = widget.isChinese
                     ? kChartTranslations['zh_CN']!
+                    : widget.language != null
+                    ? widget.translations[widget.language!]!
                     : widget.translations.of(context);
 
                 return _buildItem(
@@ -398,6 +500,73 @@ class _KChartWidgetState extends State<KChartWidget>
               },
             ),
           );
+        });
+  }
+
+  /// build custom InfoDialog function (using user-defined [customInfoDialog] function)
+  Widget _buildCustomInfoDialog(Widget Function(KLineEntity entity, ChartTranslations translations) customInfoDialog) {
+    return StreamBuilder<InfoWindowEntity?>(
+        stream: mInfoWindowStream?.stream,
+        builder: (context, snapshot) {
+          final dialogWidth = mWidth / 3;
+
+          if ((!isLongPress && !isOnTap) ||
+              widget.isLine == true ||
+              !snapshot.hasData ||
+              snapshot.data?.kLineEntity == null) return Container();
+
+          KLineEntity entity = snapshot.data!.kLineEntity;
+
+          /// calculate margin by [widget.infoDialogPosition]
+          late final EdgeInsets margin;
+          switch(widget.infoDialogPosition.alignment) {
+            case InfoDialogAlignment.Left:
+              margin = EdgeInsets.only(
+                left: widget.infoDialogPosition.horizontal,
+                top: widget.infoDialogPosition.vertical,
+              );
+              break;
+            case InfoDialogAlignment.Right:
+              margin = EdgeInsets.only(
+                left: mWidth - dialogWidth - widget.infoDialogPosition.horizontal,
+                top: widget.infoDialogPosition.vertical,
+              );
+              break;
+            case InfoDialogAlignment.BothSide:
+              margin = EdgeInsets.only(
+                left: snapshot.data!.isLeft ? widget.infoDialogPosition.horizontal : mWidth - dialogWidth - widget.infoDialogPosition.horizontal,
+                top: widget.infoDialogPosition.vertical,
+              );
+              break;
+            case InfoDialogAlignment.BesideVerticalLine:
+              margin = EdgeInsets.only(
+                left: snapshot.data!.isLeft
+                    ? mSelectX - dialogWidth - widget.chartStyle.vCrossWidth - widget.infoDialogPosition.horizontal
+                    : mSelectX + widget.chartStyle.vCrossWidth + widget.infoDialogPosition.horizontal,
+                top: widget.infoDialogPosition.vertical,
+              );
+              break;
+          }
+
+          /// if user sets [language] parameter, then [translations] must have key named [language].
+          assert((widget.language == null) ? true : widget.translations.containsKey(widget.language!));
+          /// add option about [widget.language]
+          final translations = widget.isChinese
+              ? kChartTranslations['zh_CN']!
+              : widget.language != null
+              ? widget.translations[widget.language!]!
+              : widget.translations.of(context);
+
+          return widget.materialInfoDialog
+              ? Material(
+            color: Colors.transparent,
+            child: Container(
+              width: dialogWidth,
+              margin: margin,
+              child: customInfoDialog(entity, translations),
+            ),
+          )
+              : SizedBox(width: dialogWidth, child: customInfoDialog(entity, translations));
         });
   }
 

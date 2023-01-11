@@ -48,44 +48,51 @@ class ChartPainter extends BaseChartPainter {
   final bool hideGrid;
   final bool showNowPrice;
   final VerticalTextAlignment verticalTextAlignment;
+  final bool volTextHidden; /// whether to hide the text(`VOL:~~~  MA5:~~~  MA10:~~~`) in Volume Chart
+  final bool dateTextHidden;  /// whether to hide date text below chart
 
+  /// changed by sumong : add [volState], [volTextHidden]
   ChartPainter(
-    this.chartStyle,
-    this.chartColors, {
-    required this.lines, //For TrendLine
-    required this.isTrendLine, //For TrendLine
-    required this.selectY, //For TrendLine
-    required datas,
-    required scaleX,
-    required scrollX,
-    required isLongPass,
-    required selectX,
-    required xFrontPadding,
-    isOnTap,
-    isTapShowInfoDialog,
-    required this.verticalTextAlignment,
-    mainState,
-    volHidden,
-    secondaryState,
-    this.sink,
-    bool isLine = false,
-    this.hideGrid = false,
-    this.showNowPrice = true,
-    this.fixedLength = 2,
-    this.maDayList = const [5, 10, 20],
-  }) : super(chartStyle,
-            datas: datas,
-            scaleX: scaleX,
-            scrollX: scrollX,
-            isLongPress: isLongPass,
-            isOnTap: isOnTap,
-            isTapShowInfoDialog: isTapShowInfoDialog,
-            selectX: selectX,
-            mainState: mainState,
-            volHidden: volHidden,
-            secondaryState: secondaryState,
-            xFrontPadding: xFrontPadding,
-            isLine: isLine) {
+      this.chartStyle,
+      this.chartColors, {
+        required this.lines, //For TrendLine
+        required this.isTrendLine, //For TrendLine
+        required this.selectY, //For TrendLine
+        required datas,
+        required scaleX,
+        required scrollX,
+        required isLongPass,
+        required selectX,
+        required xFrontPadding,
+        isOnTap,
+        isTapShowInfoDialog,
+        required this.verticalTextAlignment,
+        mainState,
+        volState,
+        required this.volTextHidden,
+        required this.dateTextHidden,
+        volHidden,
+        secondaryState,
+        this.sink,
+        bool isLine = false,
+        this.hideGrid = false,
+        this.showNowPrice = true,
+        this.fixedLength = 2,
+        this.maDayList = const [5, 10, 20],
+      }) : super(chartStyle,
+      datas: datas,
+      scaleX: scaleX,
+      scrollX: scrollX,
+      isLongPress: isLongPass,
+      isOnTap: isOnTap,
+      isTapShowInfoDialog: isTapShowInfoDialog,
+      selectX: selectX,
+      mainState: mainState,
+      volState: volState,
+      volHidden: volHidden,
+      secondaryState: secondaryState,
+      xFrontPadding: xFrontPadding,
+      isLine: isLine) {
     selectPointPaint = Paint()
       ..isAntiAlias = true
       ..strokeWidth = 0.5
@@ -122,8 +129,9 @@ class ChartPainter extends BaseChartPainter {
       maDayList,
     );
     if (mVolRect != null) {
+      /// add [volState], [volTextHidden]
       mVolRenderer = VolRenderer(mVolRect!, mVolMaxValue, mVolMinValue,
-          mChildPadding, fixedLength, this.chartStyle, this.chartColors);
+          mChildPadding, volState, volTextHidden, fixedLength, this.chartStyle, this.chartColors);
     }
     if (mSecondaryRect != null) {
       mSecondaryRenderer = SecondaryRenderer(
@@ -147,7 +155,7 @@ class ChartPainter extends BaseChartPainter {
       colors: chartColors.bgColor,
     );
     Rect mainRect =
-        Rect.fromLTRB(0, 0, mMainRect.width, mMainRect.height + mTopPadding);
+    Rect.fromLTRB(0, 0, mMainRect.width, mMainRect.height + mTopPadding);
     canvas.drawRect(
         mainRect, mBgPaint..shader = mBgGradient.createShader(mainRect));
 
@@ -164,10 +172,14 @@ class ChartPainter extends BaseChartPainter {
       canvas.drawRect(secondaryRect,
           mBgPaint..shader = mBgGradient.createShader(secondaryRect));
     }
-    Rect dateRect =
-        Rect.fromLTRB(0, size.height - mBottomPadding, size.width, size.height);
-    canvas.drawRect(
-        dateRect, mBgPaint..shader = mBgGradient.createShader(dateRect));
+
+    /// if user sets [dateTextHidden] is false(user want to show date), draw date area below chart.
+    if(dateTextHidden == false) {
+      Rect dateRect =
+      Rect.fromLTRB(0, size.height - mBottomPadding, size.width, size.height);
+      canvas.drawRect(
+          dateRect, mBgPaint..shader = mBgGradient.createShader(dateRect));
+    }
   }
 
   @override
@@ -217,7 +229,8 @@ class ChartPainter extends BaseChartPainter {
 
   @override
   void drawDate(Canvas canvas, Size size) {
-    if (datas == null) return;
+    /// if datas is null, or user sets [dateTextHidden] is true(user doesn't want to show date)
+    if (datas == null || dateTextHidden) return;
 
     double columnSpace = size.width / mGridColumns;
     double startX = getX(mStartIndex) - mPointWidth / 2;
@@ -268,57 +281,72 @@ class ChartPainter extends BaseChartPainter {
     double y = getMainY(point.close);
     double x;
     bool isLeft = false;
-    if (translateXtoX(getX(index)) < mWidth / 2) {
-      isLeft = false;
-      x = 1;
-      Path path = new Path();
-      path.moveTo(x, y - r);
-      path.lineTo(x, y + r);
-      path.lineTo(textWidth + 2 * w1, y + r);
-      path.lineTo(textWidth + 2 * w1 + w2, y);
-      path.lineTo(textWidth + 2 * w1, y - r);
-      path.close();
-      canvas.drawPath(path, selectPointPaint);
-      canvas.drawPath(path, selectorBorderPaint);
-      tp.paint(canvas, Offset(x + w1, y - textHeight / 2));
-    } else {
-      isLeft = true;
-      x = mWidth - textWidth - 1 - 2 * w1 - w2;
-      Path path = new Path();
-      path.moveTo(x, y);
-      path.lineTo(x + w2, y + r);
-      path.lineTo(mWidth - 2, y + r);
-      path.lineTo(mWidth - 2, y - r);
-      path.lineTo(x + w2, y - r);
-      path.close();
-      canvas.drawPath(path, selectPointPaint);
-      canvas.drawPath(path, selectorBorderPaint);
-      tp.paint(canvas, Offset(x + w1 + w2, y - textHeight / 2));
+    // if user sets to show the current price of the selected bar(displayed at the end of the horizontal axis)
+    if (chartStyle.showSelectedBarCurrentPrice) {
+      if (translateXtoX(getX(index)) < mWidth / 2) {
+        isLeft = false;
+        x = 1;
+        Path path = new Path();
+        path.moveTo(x, y - r);
+        path.lineTo(x, y + r);
+        path.lineTo(textWidth + 2 * w1, y + r);
+        path.lineTo(textWidth + 2 * w1 + w2, y);
+        path.lineTo(textWidth + 2 * w1, y - r);
+        path.close();
+        canvas.drawPath(path, selectPointPaint);
+        canvas.drawPath(path, selectorBorderPaint);
+        tp.paint(canvas, Offset(x + w1, y - textHeight / 2));
+      } else {
+        isLeft = true;
+        x = mWidth - textWidth - 1 - 2 * w1 - w2;
+        Path path = new Path();
+        path.moveTo(x, y);
+        path.lineTo(x + w2, y + r);
+        path.lineTo(mWidth - 2, y + r);
+        path.lineTo(mWidth - 2, y - r);
+        path.lineTo(x + w2, y - r);
+        path.close();
+        canvas.drawPath(path, selectPointPaint);
+        canvas.drawPath(path, selectorBorderPaint);
+        tp.paint(canvas, Offset(x + w1 + w2, y - textHeight / 2));
+      }
+    }
+    /// it should calculate [isLeft].
+    else {
+      if (translateXtoX(getX(index)) < mWidth / 2) {
+        isLeft = false;
+      } else {
+        isLeft = true;
+      }
     }
 
-    TextPainter dateTp =
-        getTextPainter(getDate(point.time), chartColors.crossTextColor);
-    textWidth = dateTp.width;
-    r = textHeight / 2;
-    x = translateXtoX(getX(index));
-    y = size.height - mBottomPadding;
+    // if user sets to show the date of the selected bar(displayed at the bottom of the vertical axis)
+    if (chartStyle.showSelectedBarDate) {
+      TextPainter dateTp =
+      getTextPainter(getDate(point.time), chartColors.crossTextColor);
+      textWidth = dateTp.width;
+      r = textHeight / 2;
+      x = translateXtoX(getX(index));
+      y = size.height - mBottomPadding;
 
-    if (x < textWidth + 2 * w1) {
-      x = 1 + textWidth / 2 + w1;
-    } else if (mWidth - x < textWidth + 2 * w1) {
-      x = mWidth - 1 - textWidth / 2 - w1;
+      if (x < textWidth + 2 * w1) {
+        x = 1 + textWidth / 2 + w1;
+      } else if (mWidth - x < textWidth + 2 * w1) {
+        x = mWidth - 1 - textWidth / 2 - w1;
+      }
+      double baseLine = textHeight / 2;
+      canvas.drawRect(
+          Rect.fromLTRB(x - textWidth / 2 - w1, y, x + textWidth / 2 + w1,
+              y + baseLine + r),
+          selectPointPaint);
+      canvas.drawRect(
+          Rect.fromLTRB(x - textWidth / 2 - w1, y, x + textWidth / 2 + w1,
+              y + baseLine + r),
+          selectorBorderPaint);
+
+      dateTp.paint(canvas, Offset(x - textWidth / 2, y));
     }
-    double baseLine = textHeight / 2;
-    canvas.drawRect(
-        Rect.fromLTRB(x - textWidth / 2 - w1, y, x + textWidth / 2 + w1,
-            y + baseLine + r),
-        selectPointPaint);
-    canvas.drawRect(
-        Rect.fromLTRB(x - textWidth / 2 - w1, y, x + textWidth / 2 + w1,
-            y + baseLine + r),
-        selectorBorderPaint);
 
-    dateTp.paint(canvas, Offset(x - textWidth / 2, y));
     //长按显示这条数据详情
     sink?.add(InfoWindowEntity(point, isLeft: isLeft));
   }

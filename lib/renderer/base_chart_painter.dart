@@ -15,6 +15,8 @@ abstract class BaseChartPainter extends CustomPainter {
   static double maxScrollX = 0.0;
   List<KLineEntity>? datas;
   MainState mainState;
+  /// changed by sumong : add [volState]
+  VolState volState;
 
   SecondaryState secondaryState;
 
@@ -47,21 +49,23 @@ abstract class BaseChartPainter extends CustomPainter {
   List<String> mFormats = [yyyy, '-', mm, '-', dd, ' ', HH, ':', nn]; //格式化时间
   double xFrontPadding;
 
+  /// changed by sumong : add [volState]
   BaseChartPainter(
-    this.chartStyle, {
-    this.datas,
-    required this.scaleX,
-    required this.scrollX,
-    required this.isLongPress,
-    required this.selectX,
-    required this.xFrontPadding,
-    this.isOnTap = false,
-    this.mainState = MainState.MA,
-    this.volHidden = false,
-    this.isTapShowInfoDialog = false,
-    this.secondaryState = SecondaryState.MACD,
-    this.isLine = false,
-  }) {
+      this.chartStyle, {
+        this.datas,
+        required this.scaleX,
+        required this.scrollX,
+        required this.isLongPress,
+        required this.selectX,
+        required this.xFrontPadding,
+        this.isOnTap = false,
+        this.mainState = MainState.MA,
+        this.volState = VolState.ALL,
+        this.volHidden = false,
+        this.isTapShowInfoDialog = false,
+        this.secondaryState = SecondaryState.MACD,
+        this.isLine = false,
+      }) {
     mItemCount = datas?.length ?? 0;
     mPointWidth = this.chartStyle.pointWidth;
     mTopPadding = this.chartStyle.topPadding;
@@ -163,7 +167,7 @@ abstract class BaseChartPainter extends CustomPainter {
   void initRect(Size size) {
     double volHeight = volHidden != true ? mDisplayHeight * 0.2 : 0;
     double secondaryHeight =
-        secondaryState != SecondaryState.NONE ? mDisplayHeight * 0.2 : 0;
+    secondaryState != SecondaryState.NONE ? mDisplayHeight * 0.2 : 0;
 
     double mainHeight = mDisplayHeight;
     mainHeight -= volHeight;

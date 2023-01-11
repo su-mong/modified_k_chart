@@ -41,12 +41,12 @@ class MainRenderer extends BaseChartRenderer<CandleEntity> {
       this.verticalTextAlignment,
       [this.maDayList = const [5, 10, 20]])
       : super(
-            chartRect: mainRect,
-            maxValue: maxValue,
-            minValue: minValue,
-            topPadding: topPadding,
-            fixedLength: fixedLength,
-            gridColor: chartColors.gridColor) {
+      chartRect: mainRect,
+      maxValue: maxValue,
+      minValue: minValue,
+      topPadding: topPadding,
+      fixedLength: fixedLength,
+      gridColor: chartColors.gridColor) {
     mCandleWidth = this.chartStyle.candleWidth;
     mCandleLineWidth = this.chartStyle.candleLineWidth;
     mLinePaint = Paint()
@@ -206,6 +206,8 @@ class MainRenderer extends BaseChartRenderer<CandleEntity> {
     }
   }
 
+  /// applying [chartStyle.candleBodyRadius] and [chartStyle.candleWickRadius]
+  /// TODO : It can make Helper Function Object that draws drawRect or drawRRect.
   void drawCandle(CandleEntity curPoint, Canvas canvas, double curX) {
     var high = getY(curPoint.high);
     var low = getY(curPoint.low);
@@ -219,20 +221,60 @@ class MainRenderer extends BaseChartRenderer<CandleEntity> {
         open = close + mCandleLineWidth;
       }
       chartPaint.color = this.chartColors.upColor;
-      canvas.drawRect(
-          Rect.fromLTRB(curX - r, close, curX + r, open), chartPaint);
-      canvas.drawRect(
-          Rect.fromLTRB(curX - lineR, high, curX + lineR, low), chartPaint);
+
+      // draw real body rectangle.
+      // case 1. if candleBodyRadius == 0 : just draw Rect.
+      if(chartStyle.candleBodyRadius == 0) {
+        canvas.drawRect(
+            Rect.fromLTRB(curX - r, close, curX + r, open), chartPaint);
+      }
+      // case 2. if candleBodyRadius != 0 : draw RRect.
+      else {
+        canvas.drawRRect(
+            RRect.fromLTRBR(curX - r, close, curX + r, open, Radius.circular(chartStyle.candleBodyRadius)), chartPaint);
+      }
+
+      // draw upper wick & lower wick line.
+      // case 1. if candleWickRadius == 0 : just draw Rect.
+      if(chartStyle.candleWickRadius == 0) {
+        canvas.drawRect(
+            Rect.fromLTRB(curX - lineR, high, curX + lineR, low), chartPaint);
+      }
+      // case 2. if candleWickRadius != 0 : draw RRect.
+      else {
+        canvas.drawRRect(
+            RRect.fromLTRBR(curX - lineR, high, curX + lineR, low, Radius.circular(chartStyle.candleWickRadius)), chartPaint);
+      }
     } else if (close > open) {
       // 实体高度>= CandleLineWidth
       if (close - open < mCandleLineWidth) {
         open = close - mCandleLineWidth;
       }
       chartPaint.color = this.chartColors.dnColor;
-      canvas.drawRect(
-          Rect.fromLTRB(curX - r, open, curX + r, close), chartPaint);
-      canvas.drawRect(
-          Rect.fromLTRB(curX - lineR, high, curX + lineR, low), chartPaint);
+
+      // draw upper wick & lower wick line.
+      // case 1. if candleWickRadius == 0 : just draw Rect.
+      if(chartStyle.candleWickRadius == 0) {
+        canvas.drawRect(
+            Rect.fromLTRB(curX - r, open, curX + r, close), chartPaint);
+      }
+      // case 2. if candleWickRadius != 0 : draw RRect.
+      else {
+        canvas.drawRRect(
+            RRect.fromLTRBR(curX - r, open, curX + r, close, Radius.circular(chartStyle.candleWickRadius)), chartPaint);
+      }
+
+      // draw upper wick & lower wick line.
+      // case 1. if candleWickRadius == 0 : just draw Rect.
+      if(chartStyle.candleWickRadius == 0) {
+        canvas.drawRect(
+            Rect.fromLTRB(curX - lineR, high, curX + lineR, low), chartPaint);
+      }
+      // case 2. if candleWickRadius != 0 : draw RRect.
+      else {
+        canvas.drawRRect(
+            RRect.fromLTRBR(curX - lineR, high, curX + lineR, low, Radius.circular(chartStyle.candleWickRadius)), chartPaint);
+      }
     }
   }
 
@@ -243,7 +285,7 @@ class MainRenderer extends BaseChartRenderer<CandleEntity> {
       double value = (gridRows - i) * rowSpace / scaleY + minValue;
       TextSpan span = TextSpan(text: "${format(value)}", style: textStyle);
       TextPainter tp =
-          TextPainter(text: span, textDirection: TextDirection.ltr);
+      TextPainter(text: span, textDirection: TextDirection.ltr);
       tp.layout();
 
       double offsetX;
